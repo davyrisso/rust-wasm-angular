@@ -1,0 +1,22 @@
+<mat-toolbar color="primary">
+  <span>3D Mesh Viewer</span>
+  <span class="toolbar-spacer"></span>
+  <button mat-icon-button (click)="toggleSidenav()">
+    <mat-icon>menu</mat-icon>
+  </button>
+</mat-toolbar>
+
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav #sidenav mode="side" opened class="sidenav">
+    <mat-nav-list>
+      <button mat-raised-button color="accent" (click)="subdivide()">
+        <mat-icon>add</mat-icon>
+        Subdivide
+      </button>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="sidenav-content">
+    <app-three-viewer #rendererContainer></app-three-viewer>
+  </mat-sidenav-content>
+</mat-sidenav-container>

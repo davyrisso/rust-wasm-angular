@@ -1,0 +1,33 @@
+.sidenav-container {
+  height: calc(100vh - 64px);
+}
+
+.sidenav {
+  width: 250px;
+  padding: 16px;
+}
+
+.sidenav-content {
+  padding: 16px;
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+mat-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+}
+
+mat-sidenav-container {
+  margin-top: 64px;
+}
+
+button[mat-raised-button] {
+  width: 100%;
+  margin-bottom: 8px;
+}
