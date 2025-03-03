@@ -6,17 +6,7 @@
   </button>
 </mat-toolbar>
 
-<mat-sidenav-container class="sidenav-container">
-  <mat-sidenav #sidenav mode="side" opened class="sidenav">
-    <mat-nav-list>
-      <button mat-raised-button color="accent" (click)="subdivide()">
-        <mat-icon>add</mat-icon>
-        Subdivide
-      </button>
-    </mat-nav-list>
-  </mat-sidenav>
-
-  <mat-sidenav-content class="sidenav-content">
-    <app-three-viewer #rendererContainer></app-three-viewer>
-  </mat-sidenav-content>
-</mat-sidenav-container>
+<div class="app-container">
+  <app-sidebar></app-sidebar>
+  <app-viewport></app-viewport>
+</div>
