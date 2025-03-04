@@ -12,9 +12,9 @@ pub fn subdivide(mesh: &mut Mesh) {
 
     for i in (0..mesh.indices.len()).step_by(3) {
         let [v1, v2, v3] = [mesh.indices[i], mesh.indices[i + 1], mesh.indices[i + 2]];
-        let keys = [(v1.min(v2), v1.max(v2)), (v2.min(v3), v2.max(v3)), (v3.min(v1), v3.max(v1))];
+        let edges = [(v1.min(v2), v1.max(v2)), (v2.min(v3), v2.max(v3)), (v3.min(v1), v3.max(v1))];
         
-        let midpoints: Vec<u16> = keys.iter().map(|&(v1, v2)| {
+        let midpoints: Vec<u16> = edges.iter().map(|&(v1, v2)| {
             if let Some(&midpoint) = edge_midpoints.get(&(v1, v2)) {
                 midpoint
             } else {

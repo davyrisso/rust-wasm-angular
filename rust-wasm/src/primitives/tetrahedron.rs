@@ -2,10 +2,10 @@ use crate::Mesh;
 
 pub fn create_tetrahedron() -> Mesh {
     let vertices = vec![
-        0.0, 0.0, 0.0,      // 0
-        1.0, 0.0, 0.0,      // 1
-        0.5, 1.0, 0.0,      // 2
-        0.5, 0.5, 0.866,    // 3
+        0.0, 0.0, 0.0,      // base
+        1.0, 0.0, 0.0,      // right
+        0.5, 1.0, 0.0,      // top
+        0.5, 0.5, 0.866,    // front
     ];
 
     let indices = vec![

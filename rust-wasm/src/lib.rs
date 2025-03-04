@@ -7,9 +7,9 @@ use js_sys::Float32Array;
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
 pub enum PrimitiveType {
-    Cube = 0,
-    Tetrahedron = 1,
-    Octahedron = 2,
+    Cube,
+    Tetrahedron,
+    Octahedron,
 }
 
 #[wasm_bindgen]
@@ -21,15 +21,12 @@ pub struct Mesh {
 #[wasm_bindgen]
 impl Mesh {
     #[wasm_bindgen(constructor)]
-    pub fn new() -> Mesh {
-        Mesh {
-            vertices: Vec::new(),
-            indices: Vec::new(),
-        }
+    pub fn new() -> Self {
+        Self { vertices: Vec::new(), indices: Vec::new() }
     }
 
     #[wasm_bindgen]
-    pub fn from_primitive(primitive_type: PrimitiveType) -> Mesh {
+    pub fn from_primitive(primitive_type: PrimitiveType) -> Self {
         match primitive_type {
             PrimitiveType::Cube => primitives::create_cube(),
             PrimitiveType::Tetrahedron => primitives::create_tetrahedron(),
