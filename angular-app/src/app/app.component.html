@@ -1,8 +1,15 @@
 <mat-toolbar color="primary">
-  <span>3D Mesh Viewer</span>
+  <span>{{title}}</span>
 </mat-toolbar>
 
 <main class="app-container">
   <app-sidebar></app-sidebar>
   <app-viewport></app-viewport>
 </main>
+
+<app-status-bar
+  *ngIf="showStats"
+  [vertices]="viewport.vertices"
+  [edges]="viewport.edges"
+  [faces]="viewport.faces">
+</app-status-bar>

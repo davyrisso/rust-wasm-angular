@@ -31,6 +31,10 @@ export class ViewportComponent implements AfterViewInit, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
   private isInitialized = false;
 
+  vertices = 0;
+  edges = 0;
+  faces = 0;
+
   constructor(
     private meshService: MeshService,
     private initService: InitService
@@ -161,6 +165,17 @@ export class ViewportComponent implements AfterViewInit, OnDestroy {
     };
   }
 
+  private updateMeshStats(): void {
+    if (!this.currentMesh) return;
+    
+    const vertices = this.currentMesh.get_vertices();
+    const indices = this.currentMesh.get_indices();
+    
+    this.vertices = vertices.length / 3;
+    this.faces = indices.length / 3;
+    this.edges = (this.vertices + this.faces - 2) * 2; // Euler's formula for convex polyhedra
+  }
+
   private updateMesh(type: PrimitiveType): void {
     if (!this.initService.isWasmInitialized() || !this.isInitialized) return;
 
@@ -185,28 +200,39 @@ export class ViewportComponent implements AfterViewInit, OnDestroy {
       this.mesh = new THREE.Group();
       this.mesh.add(solidMesh, wireframeMesh);
       this.scene.add(this.mesh);
+      
+      this.updateMeshStats();
     } catch (error) {
       // Handle error silently
     }
   }
 
   private subdivide(): void {
-    if (!this.initService.isWasmInitialized() || !this.isInitialized || !this.currentMesh) return;
+    if (!this.initService.isWasmInitialized() || !this.isInitialized || !this.currentMesh || !this.mesh) return;
 
     this.currentMesh.subdivide();
-    const geometry = this.createMeshGeometry(
-      this.currentMesh.get_vertices(),
-      this.currentMesh.get_indices()
-    );
+    const vertices = this.currentMesh.get_vertices();
+    const indices = this.currentMesh.get_indices();
 
-    const { solid, wireframe } = this.createMaterials();
-    const solidMesh = new THREE.Mesh(geometry, solid);
-    const wireframeMesh = new THREE.Mesh(geometry, wireframe);
+    // Create new geometry with correct buffer sizes
+    const geometry = this.createMeshGeometry(vertices, indices);
 
-    this.mesh?.removeFromParent();
-    this.mesh = new THREE.Group();
-    this.mesh.add(solidMesh, wireframeMesh);
-    this.scene.add(this.mesh);
+    // Update both meshes in the group
+    const solidMesh = this.mesh.children[0] as THREE.Mesh;
+    const wireframeMesh = this.mesh.children[1] as THREE.Mesh;
+
+    // Dispose of old geometry
+    solidMesh.geometry.dispose();
+    wireframeMesh.geometry.dispose();
+
+    // Assign new geometry
+    solidMesh.geometry = geometry;
+    wireframeMesh.geometry = geometry;
+
+    // Update normals
+    geometry.computeVertexNormals();
+    
+    this.updateMeshStats();
   }
 
   private animate = (): void => {
