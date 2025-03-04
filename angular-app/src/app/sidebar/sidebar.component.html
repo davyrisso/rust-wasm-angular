@@ -1,13 +1,12 @@
 <div class="sidebar">
-  <div class="controls">
-    <mat-form-field>
-      <mat-label>Select Primitive</mat-label>
-      <mat-select [(ngModel)]="selectedPrimitive" (selectionChange)="onPrimitiveChange()">
-        <mat-option *ngFor="let type of primitiveTypes" [value]="type.value">
-          {{type.label}}
-        </mat-option>
-      </mat-select>
-    </mat-form-field>
-    <button mat-raised-button color="primary" (click)="subdivide()">Subdivide</button>
-  </div>
+  <mat-form-field appearance="outline">
+    <mat-label>Select Primitive</mat-label>
+    <mat-select [(ngModel)]="selectedPrimitive" (selectionChange)="onPrimitiveChange()">
+      <mat-option *ngFor="let type of primitiveTypes" [value]="type.value">
+        {{type.label}}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <button mat-raised-button color="primary" (click)="onSubdivide()">Subdivide</button>
 </div> 

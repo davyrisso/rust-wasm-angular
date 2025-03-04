@@ -1,4 +1,4 @@
-import { Component, ElementRef, AfterViewInit, ViewChild, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, ElementRef, AfterViewInit, ViewChild, OnDestroy } from '@angular/core';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { Mesh, PrimitiveType } from '@wasm/rust_wasm';
@@ -16,103 +16,51 @@ import { MatButtonModule } from '@angular/material/button';
   templateUrl: './viewport.component.html',
   styleUrls: ['./viewport.component.scss'],
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    MatFormFieldModule,
-    MatSelectModule,
-    MatButtonModule
-  ]
+  imports: [CommonModule, FormsModule, MatFormFieldModule, MatSelectModule, MatButtonModule]
 })
 export class ViewportComponent implements AfterViewInit, OnDestroy {
-  @ViewChild('rendererContainer') rendererContainer!: ElementRef;
+  @ViewChild('rendererContainer') private rendererContainer!: ElementRef;
 
-  private scene!: THREE.Scene;
+  private scene = new THREE.Scene();
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
   private controls!: OrbitControls;
-  private mesh!: THREE.Mesh;
+  private mesh: THREE.Group | null = null;
   private currentMesh: Mesh | null = null;
-  private currentPrimitiveType: PrimitiveType = PrimitiveType.Cube;
   private subscriptions: Subscription[] = [];
   private resizeObserver: ResizeObserver | null = null;
   private isInitialized = false;
 
   constructor(
     private meshService: MeshService,
-    private initService: InitService,
-    private cdr: ChangeDetectorRef
-  ) { }
-
-  ngAfterViewInit() {
-    setTimeout(() => {
-      try {
-        this.setupScene();
-        this.setupLights();
-        this.setupControls();
-        this.isInitialized = true;
-        this.cdr.detectChanges();
-
-        this.subscriptions.push(
-          this.meshService.primitiveChange$.subscribe(type => {
-            if (this.initService.isWasmInitialized()) {
-              this.updateMesh(type);
-            }
-          }),
-          this.meshService.subdivide$.subscribe(() => {
-            if (this.initService.isWasmInitialized()) {
-              this.subdivide();
-            }
-          })
-        );
-
-        if (this.initService.isWasmInitialized()) {
-          this.setupMesh();
-          this.animate();
-        } else {
-          this.subscriptions.push(
-            this.initService.wasmInitialized$.subscribe(initialized => {
-              if (initialized && this.isInitialized) {
-                this.setupMesh();
-                this.animate();
-              }
-            })
-          );
-        }
-
-        this.setupResizeObserver();
-      } catch (error) {
-        // Handle error silently
-      }
-    });
-  }
-
-  ngOnDestroy() {
-    this.subscriptions.forEach(sub => sub.unsubscribe());
-    if (this.renderer) {
-      this.renderer.dispose();
-    }
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-    }
-  }
-
-  private setupScene() {
-    if (!this.rendererContainer?.nativeElement) {
-      throw new Error('Renderer container not found');
-    }
-
-    this.scene = new THREE.Scene();
+    private initService: InitService
+  ) {
     this.scene.background = new THREE.Color(0x333333);
-    
+  }
+
+  ngAfterViewInit(): void {
+    this.setupScene();
+    this.setupLights();
+    this.setupControls();
+    this.setupSubscriptions();
+    this.setupResizeObserver();
+    this.isInitialized = true;
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.renderer?.dispose();
+    this.resizeObserver?.disconnect();
+  }
+
+  private setupScene(): void {
     const container = this.rendererContainer.nativeElement;
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    
-    if (width === 0 || height === 0) {
+    const { clientWidth: width, clientHeight: height } = container;
+
+    if (!width || !height) {
       throw new Error('Container has zero size');
     }
-    
+
     this.camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
     this.camera.position.z = 5;
 
@@ -121,16 +69,15 @@ export class ViewportComponent implements AfterViewInit, OnDestroy {
     container.appendChild(this.renderer.domElement);
   }
 
-  private setupLights() {
+  private setupLights(): void {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    this.scene.add(ambientLight);
-
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
     directionalLight.position.set(0, 1, 1);
-    this.scene.add(directionalLight);
+
+    this.scene.add(ambientLight, directionalLight);
   }
 
-  private setupControls() {
+  private setupControls(): void {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
@@ -140,141 +87,132 @@ export class ViewportComponent implements AfterViewInit, OnDestroy {
     this.controls.screenSpacePanning = false;
   }
 
-  private setupResizeObserver() {
-    if (!this.rendererContainer?.nativeElement) return;
+  private setupSubscriptions(): void {
+    this.subscriptions.push(
+      this.meshService.primitiveChange$.subscribe(type => {
+        if (this.initService.isWasmInitialized()) {
+          this.updateMesh(type);
+        }
+      }),
+      this.meshService.subdivide$.subscribe(() => {
+        if (this.initService.isWasmInitialized()) {
+          this.subdivide();
+        }
+      })
+    );
 
-    this.resizeObserver = new ResizeObserver(() => {
-      this.onResize();
-    });
+    if (this.initService.isWasmInitialized()) {
+      this.setupMesh();
+      this.animate();
+    } else {
+      this.subscriptions.push(
+        this.initService.wasmInitialized$.subscribe(initialized => {
+          if (initialized && this.isInitialized) {
+            this.setupMesh();
+            this.animate();
+          }
+        })
+      );
+    }
+  }
 
+  private setupResizeObserver(): void {
+    this.resizeObserver = new ResizeObserver(() => this.onResize());
     this.resizeObserver.observe(this.rendererContainer.nativeElement);
   }
 
-  private onResize() {
-    if (!this.rendererContainer?.nativeElement || !this.camera || !this.renderer) return;
-
+  private onResize(): void {
     const container = this.rendererContainer.nativeElement;
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    const { clientWidth: width, clientHeight: height } = container;
 
-    if (width === 0 || height === 0) return;
+    if (!width || !height) return;
 
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
   }
 
-  private setupMesh() {
+  private setupMesh(): void {
     if (this.initService.isWasmInitialized() && this.isInitialized) {
       this.updateMesh(PrimitiveType.Cube);
     }
   }
 
-  private updateMesh(type: PrimitiveType) {
-    if (!this.initService.isWasmInitialized() || !this.isInitialized) {
-      return;
-    }
+  private createMeshGeometry(vertices: Float32Array, indices: Uint16Array): THREE.BufferGeometry {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+    return geometry;
+  }
 
-    if (this.mesh) {
-      this.scene.remove(this.mesh);
-    }
-
-    try {
-      this.currentPrimitiveType = type;
-      const wasmModule = this.initService.getWasmModule();
-      if (!wasmModule) {
-        throw new Error('WASM module not available');
-      }
-      this.currentMesh = wasmModule.Mesh.from_primitive(type);
-      
-      if (!this.currentMesh) {
-        throw new Error('Failed to create mesh');
-      }
-
-      const vertices = this.currentMesh.get_vertices();
-      const indices = this.currentMesh.get_indices();
-
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
-      geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
-
-      const group = new THREE.Group();
-
-      const solidMaterial = new THREE.MeshPhongMaterial({
+  private createMaterials(): { solid: THREE.Material; wireframe: THREE.Material } {
+    return {
+      solid: new THREE.MeshPhongMaterial({
         color: 0x00ff00,
         side: THREE.DoubleSide,
         transparent: true,
         opacity: 0.7
-      });
-
-      const wireframeMaterial = new THREE.MeshBasicMaterial({
+      }),
+      wireframe: new THREE.MeshBasicMaterial({
         color: 0x000000,
         wireframe: true,
         side: THREE.DoubleSide
-      });
+      })
+    };
+  }
 
-      const solidMesh = new THREE.Mesh(geometry, solidMaterial);
-      const wireframeMesh = new THREE.Mesh(geometry, wireframeMaterial);
+  private updateMesh(type: PrimitiveType): void {
+    if (!this.initService.isWasmInitialized() || !this.isInitialized) return;
 
-      group.add(solidMesh);
-      group.add(wireframeMesh);
-      this.scene.add(group);
-      this.mesh = group as unknown as THREE.Mesh;
+    this.mesh?.removeFromParent();
+
+    try {
+      const wasmModule = this.initService.getWasmModule();
+      if (!wasmModule) throw new Error('WASM module not available');
+
+      this.currentMesh = wasmModule.Mesh.from_primitive(type);
+      if (!this.currentMesh) throw new Error('Failed to create mesh');
+
+      const geometry = this.createMeshGeometry(
+        this.currentMesh.get_vertices(),
+        this.currentMesh.get_indices()
+      );
+
+      const { solid, wireframe } = this.createMaterials();
+      const solidMesh = new THREE.Mesh(geometry, solid);
+      const wireframeMesh = new THREE.Mesh(geometry, wireframe);
+
+      this.mesh = new THREE.Group();
+      this.mesh.add(solidMesh, wireframeMesh);
+      this.scene.add(this.mesh);
     } catch (error) {
       // Handle error silently
     }
   }
 
-  private subdivide() {
-    if (!this.initService.isWasmInitialized() || !this.isInitialized) {
-      return;
-    }
+  private subdivide(): void {
+    if (!this.initService.isWasmInitialized() || !this.isInitialized || !this.currentMesh) return;
 
-    if (this.currentMesh) {
-      this.currentMesh.subdivide();
-      
-      const vertices = this.currentMesh.get_vertices();
-      const indices = this.currentMesh.get_indices();
-      
-      if (this.mesh) {
-        this.scene.remove(this.mesh);
-      }
+    this.currentMesh.subdivide();
+    const geometry = this.createMeshGeometry(
+      this.currentMesh.get_vertices(),
+      this.currentMesh.get_indices()
+    );
 
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
-      geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
+    const { solid, wireframe } = this.createMaterials();
+    const solidMesh = new THREE.Mesh(geometry, solid);
+    const wireframeMesh = new THREE.Mesh(geometry, wireframe);
 
-      const group = new THREE.Group();
-
-      const solidMaterial = new THREE.MeshPhongMaterial({
-        color: 0x00ff00,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.7
-      });
-
-      const wireframeMaterial = new THREE.MeshBasicMaterial({
-        color: 0x000000,
-        wireframe: true,
-        side: THREE.DoubleSide
-      });
-
-      const solidMesh = new THREE.Mesh(geometry, solidMaterial);
-      const wireframeMesh = new THREE.Mesh(geometry, wireframeMaterial);
-
-      group.add(solidMesh);
-      group.add(wireframeMesh);
-      this.scene.add(group);
-      this.mesh = group as unknown as THREE.Mesh;
-    }
+    this.mesh?.removeFromParent();
+    this.mesh = new THREE.Group();
+    this.mesh.add(solidMesh, wireframeMesh);
+    this.scene.add(this.mesh);
   }
 
-  private animate = () => {
-    if (!this.mesh || !this.initService.isWasmInitialized() || !this.isInitialized) {
-      return;
-    }
+  private animate = (): void => {
+    if (!this.mesh || !this.initService.isWasmInitialized() || !this.isInitialized) return;
     requestAnimationFrame(this.animate);
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
-  }
+  };
 } 
